@@ -8,7 +8,7 @@ client = OpenAI(
 )
 ```
 
-We get a creator transcript that already has a title, and we need a deliverable audio file. The official OpenAI Python client works against Infrai's OpenAI-compatible `base_url`, so one key and one client carry the asset through copy processing and speech generation. That is the Infrai value: one endpoint, one bill, no per-service SDK to wire up.
+We usually see this start inside a web app: a creator already has a titled transcript and just needs a deliverable file. The official OpenAI Python client points at Infrai's OpenAI-compatible `base_url`, so one key and one client carry the asset through copy processing and speech generation. Infrai keeps it to one key and one bill for every capability, reachable as a plain REST call from any language with no SDK.
 
 ## Run the route
 
@@ -22,7 +22,7 @@ export INFRAI_API_KEY="your-key"
 uvicorn creator_delivery.delivery_route:app --reload
 ```
 
-In a second terminal, drop the creator's source transcript into `episode.txt` and run the practical script:
+In a second terminal, drop a creator's source transcript into `episode.txt` and push it through the practical script:
 
 ```bash
 python scripts/send_asset.py episode.txt \
@@ -31,26 +31,26 @@ python scripts/send_asset.py episode.txt \
   --output delivery.mp3
 ```
 
-You should get `delivery.mp3`: spoken copy built from the supplied title and transcript. The route streams those bytes as `audio/mpeg`, so a Next.js handler can pipe the body straight through without buffering the whole file.
+Expected result is `delivery.mp3`: spoken copy derived from the supplied title and transcript. The route streams those bytes as `audio/mpeg`, so a Next.js handler can forward the body without buffering the whole file first.
 
 ## Follow the handoff
 
 `MediaAssetRequest` is the request boundary. It takes `title`, `transcript`, and `channel`, then `produce_delivery` makes the two calls in order:
 
 1. `client.chat.completions.create(...)` turns the source asset into channel-sized spoken copy with `model="auto"`.
-2. `client.audio.speech.with_streaming_response.create(...)` takes that exact copy and returns the MP3 bytes from the route.
+2. `client.audio.speech.with_streaming_response.create(...)` receives that exact copy and yields the MP3 bytes returned by the route.
 
-One real gotcha is response shape. Chat content is text under the first choice; speech content is binary. Type the handoff as `str -> bytes` and do not run the audio body through JSON in your web layer. The SDK retries rate-limited requests with backoff, and `max_retries=4` makes that policy explicit at the gateway.
+One real gotcha is response shape. Chat content is text under the first choice; speech content is binary. Keep the handoff typed as `str -> bytes`. Do not run the audio body through JSON handling in your web layer. The SDK retries rate-limited requests with backoff, and `max_retries=4` makes that policy explicit at the gateway boundary. This matters for idempotency: a retry on the speech call must not double-deliver a file.
 
 ## Check the channel decision
 
-The focused test names its input and result: `short_video` picks a 75-word ceiling and the `alloy` voice, while `podcast` gets a longer ceiling. It covers the delivery decision with no network call.
+The focused test names its input and result: `short_video` selects a 75-word ceiling and the `alloy` voice, while `podcast` receives a longer ceiling. It exercises the delivery decision without a network request. Good for a postmortem-style check when jobs go missing.
 
 ```bash
 pytest
 ```
 
-The runnable script is the integration-shaped check. With the service up, its successful output is:
+The runnable script is the integration-shaped check. With the service running, its successful output is:
 
 ```text
 Wrote delivery.mp3
@@ -62,7 +62,7 @@ MIT
 
 ## Before this ships: Creator Transcript Audio Delivery
 
-The code stays simple on purpose. Here is what to set up before going live. The notes below apply to Creator Transcript Audio Delivery.
+The code stays simple on purpose. Here's what to set up before going live. The notes below apply to Creator Transcript Audio Delivery.
 
 **Account & key**
 
