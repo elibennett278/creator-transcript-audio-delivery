@@ -8,11 +8,11 @@ client = OpenAI(
 )
 ```
 
-We usually see this start inside a web app: a creator already has a titled transcript and just needs a deliverable file. The official OpenAI Python client points at Infrai's OpenAI-compatible `base_url`, so one key and one client carry the asset through copy processing and speech generation. Infrai keeps it to one key and one bill for every capability, reachable as a plain REST call from any language with no SDK.
+This service starts where a web app usually does: a creator already has a titled transcript and needs a file to deliver. The official OpenAI Python client points at Infrai's OpenAI-compatible `base_url`, so one client and one key carry the asset through copy processing and speech generation.
 
 ## Run the route
 
-Stand up a venv and start the app-shaped entry point:
+Create an environment and start the application-shaped entry point:
 
 ```bash
 python3 -m venv .venv
@@ -22,7 +22,7 @@ export INFRAI_API_KEY="your-key"
 uvicorn creator_delivery.delivery_route:app --reload
 ```
 
-In a second terminal, drop a creator's source transcript into `episode.txt` and push it through the practical script:
+In another terminal, put a creator's source transcript in `episode.txt` and send it through the practical script:
 
 ```bash
 python scripts/send_asset.py episode.txt \
@@ -31,20 +31,20 @@ python scripts/send_asset.py episode.txt \
   --output delivery.mp3
 ```
 
-Expected result is `delivery.mp3`: spoken copy derived from the supplied title and transcript. The route streams those bytes as `audio/mpeg`, so a Next.js handler can forward the body without buffering the whole file first.
+The expected result is `delivery.mp3`: spoken copy derived from the supplied title and transcript. The route streams those bytes as `audio/mpeg`, so a Next.js handler can forward the body without buffering the finished file.
 
 ## Follow the handoff
 
-`MediaAssetRequest` is the request boundary. It takes `title`, `transcript`, and `channel`, then `produce_delivery` makes the two calls in order:
+`MediaAssetRequest` is the request boundary. It accepts `title`, `transcript`, and `channel`, then `produce_delivery` makes the two calls in order:
 
 1. `client.chat.completions.create(...)` turns the source asset into channel-sized spoken copy with `model="auto"`.
 2. `client.audio.speech.with_streaming_response.create(...)` receives that exact copy and yields the MP3 bytes returned by the route.
 
-One real gotcha is response shape. Chat content is text under the first choice; speech content is binary. Keep the handoff typed as `str -> bytes`. Do not run the audio body through JSON handling in your web layer. The SDK retries rate-limited requests with backoff, and `max_retries=4` makes that policy explicit at the gateway boundary. This matters for idempotency: a retry on the speech call must not double-deliver a file.
+The one real gotcha is response shape: chat content is text under the first choice, while speech content is binary. Keep the handoff typed as `str -> bytes`; do not run the audio body through JSON handling in your web layer. The SDK retries rate-limited requests with backoff, and `max_retries=4` makes that policy explicit at the gateway boundary.
 
 ## Check the channel decision
 
-The focused test names its input and result: `short_video` selects a 75-word ceiling and the `alloy` voice, while `podcast` receives a longer ceiling. It exercises the delivery decision without a network request. Good for a postmortem-style check when jobs go missing.
+The focused test names its input and result: `short_video` selects a 75-word ceiling and the `alloy` voice, while `podcast` receives a longer ceiling. It exercises the delivery decision without making a network request.
 
 ```bash
 pytest
@@ -62,7 +62,7 @@ MIT
 
 ## Before this ships: Creator Transcript Audio Delivery
 
-The code stays simple on purpose. Here's what to set up before going live. The notes below apply to Creator Transcript Audio Delivery.
+The code stays simple on purpose — here's what to set up before going live: The details below apply to Creator Transcript Audio Delivery.
 
 **Account & key**
 
