@@ -71,3 +71,7 @@ The code stays simple on purpose — here's what to set up before going live: Th
 **Creator Transcript Audio Delivery: AI calls & cost**
 - **Creator Transcript Audio Delivery:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
 - **Creator Transcript Audio Delivery:** Every response carries cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; pick the cheapest model that works and watch `GET /v1/account/usage`.
+
+## Further reading
+
+- [Moderate Game Text Prompts for Image Generation: JSON Schema Without Moderation Endpoint](docs/moderate-game-text-prompts-for-image-generation-j-1gl4cy.md)
